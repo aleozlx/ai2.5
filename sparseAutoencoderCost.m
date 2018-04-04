@@ -20,11 +20,11 @@ b2 = theta(2*hiddenSize*visibleSize+hiddenSize+1:end);
 
 % Cost and gradient variables (your code needs to compute these values). 
 % Here, we initialize them to zeros. 
-cost = 0;
+%cost = 0;
 W1grad = zeros(size(W1)); 
 W2grad = zeros(size(W2));
-b1grad = zeros(size(b1)); 
-b2grad = zeros(size(b2));
+%b1grad = zeros(size(b1)); 
+%b2grad = zeros(size(b2));
 
 %% ---------- YOUR CODE HERE --------------------------------------
 %  Instructions: Compute the cost/optimization objective J_sparse(W,b) for the Sparse Autoencoder,
@@ -42,22 +42,23 @@ b2grad = zeros(size(b2));
 % the gradient descent update to W1 would be W1 := W1 - alpha * W1grad, and similarly for W2, b1, b2. 
 % 
 
+num_samples = size(data, 2);
 
+a1 = sigmoid(W1 * data + b1); % shape: (hidden units, samples)
+a2 = sigmoid(W2 * a1 + b2); % shape: (visible units, samples)
+cost = norm(a2 - data)^2 / (2*num_samples);
 
+b2grad = mean((a2 - data) .* sigmoid_grad(a2), 2); % shape: (visible units)
+for n = 1:num_samples
+    W2grad = W2grad + b2grad * a1(:, n)';
+end
+W2grad = W2grad / num_samples;
 
-
-
-
-
-
-
-
-
-
-
-
-
-
+b1grad = (W2grad' * b2grad) .* mean(sigmoid_grad(a1), 2);
+for n = 1:num_samples
+    W1grad = W1grad + b1grad * data(:, n)';
+end
+W1grad = W1grad / num_samples;
 
 
 %-------------------------------------------------------------------
@@ -75,7 +76,10 @@ end
 % column) vector (say (z1, z2, z3)) and returns (f(z1), f(z2), f(z3)). 
 
 function sigm = sigmoid(x)
-  
     sigm = 1 ./ (1 + exp(-x));
+end
+
+function sigmgrad = sigmoid_grad(y)
+    sigmgrad = y .* (1 - y);
 end
 
