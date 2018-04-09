@@ -45,20 +45,19 @@ W2grad = zeros(size(W2));
 num_samples = size(data, 2);
 
 a1 = sigmoid(W1 * data + b1); % shape: (hidden units, samples)
+a1_mean = sum(a1, 2) ./ num_samples; % shape: (hidden units)
 a2 = sigmoid(W2 * a1 + b2); % shape: (visible units, samples)
-cost = norm(a2 - data)^2 / (2*num_samples);
+cost = norm(a2 - data, 'fro')^2 / (2*num_samples) + ...
+    lambda * (norm(W1, 'fro')^2 + norm(W2, 'fro')^2) / 2 + ... % weight decay
+    beta * sum(sparsityParam .* log(sparsityParam ./ a1_mean) + ... % sparsity
+        (1 - sparsityParam) .* log((1 - sparsityParam) ./ (1 - a1_mean)));
 
-b2grad = mean((a2 - data) .* sigmoid_grad(a2), 2); % shape: (visible units)
-for n = 1:num_samples
-    W2grad = W2grad + b2grad * a1(:, n)';
-end
-W2grad = W2grad / num_samples;
-
-b1grad = (W2grad' * b2grad) .* mean(sigmoid_grad(a1), 2);
-for n = 1:num_samples
-    W1grad = W1grad + b1grad * data(:, n)';
-end
-W1grad = W1grad / num_samples;
+d2 = (a2 - data) .* sigmoid_grad(a2);
+d1 = ((W2' * d2) + beta .* (-sparsityParam ./ a1_mean + (1 - sparsityParam) ./ (1 - a1_mean))) .* sigmoid_grad(a1);
+W1grad = d1 * data' ./ num_samples + lambda .* W1;
+W2grad = d2 * a1' ./ num_samples + lambda .* W2;
+b1grad = sum(d1, 2) ./ num_samples;
+b2grad = sum(d2, 2) ./ num_samples;
 
 
 %-------------------------------------------------------------------
